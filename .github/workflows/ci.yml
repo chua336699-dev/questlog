@@ -1,0 +1,36 @@
+name: QuestLog CI and Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check browser persistence has moved off localStorage
+        run: "! grep -q 'localStorage' index.html"
+      - name: Create browser runtime configuration
+        run: |
+          echo 'window.QUESTLOG_SUPABASE = { url: "${{ secrets.SUPABASE_URL }}", anonKey: "${{ secrets.SUPABASE_ANON_KEY }}" };' > config.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
